@@ -1,13 +1,23 @@
+---@diagnostic disable: lowercase-global
+
 --[[
-    update 3 - "adding rectangle and ball movement"
-    using a library called push to make the game virtually low resulotion
-    to give the game a retro asthetic feel 
+    update 4 - "implimenting object orineted programming"
+    using class library to implement classes and object
 ]]
 
 
 -- adding the push library (like importing)
 --https://github.com/Ulydev/push
 push = require 'push'
+
+-- https://github.com/vrld/hump/blob/master/class.lua
+Class = require 'class'
+
+-- adding our paddle class
+require 'Paddle'
+
+--adding our ball class 
+require 'Ball'
 
 -- setting an height and width values for the screen for using it in all code
 WINDOW_WIDTH = 1080
@@ -19,15 +29,9 @@ VIRTUAL_HEIGHT = 420
 
 
 -- speed at which our paddle will move
-PADDLE_SPEED = 200
+PADDLE_SPEED = 250
 
---variables for score tracking
-player1score = 0
-player2score = 0
 
---variable Y values for the paddles
-player1Y = 30
-player2Y = VIRTUAL_HEIGHT-80
 
 
 -- the love.load() function is like a constructor of a class, it runs only once at the start of the game and loads up initial conditions and screen
@@ -38,7 +42,8 @@ function love.load()
 
     --this is just a filter so that text is still readable
     love.graphics.setDefaultFilter('nearest','nearest')
-    
+   
+    math.randomseed(os.time())
     -- replacing love.window.setMode() with the following underwritten function from push library for 
     -- keeping the external screen size  same but lower internal resulotion for old like effect
     push:setupScreen(VIRTUAL_WIDTH,VIRTUAL_HEIGHT,WINDOW_WIDTH,WINDOW_HEIGHT,{
@@ -46,6 +51,20 @@ function love.load()
         resizable = false,
         vsync = true
     })
+    --paddle object for both players
+    player1 = Paddle(10,30,5,50)
+    player2 = Paddle(VIRTUAL_WIDTH -15,VIRTUAL_HEIGHT-80,5,50)
+
+    --ball object decleration
+    ball = Ball(VIRTUAL_WIDTH/2-3,VIRTUAL_HEIGHT/2-3,8)
+
+
+    --variables for score tracking
+    player1score = 0
+    player2score = 0
+    gameState = 'start'
+
+
 end
 
 --function for terminating the game on press of escape button
@@ -53,6 +72,15 @@ function love.keypressed(key)
     -- the parameter key is of type string and will have its value equal to string value of that key
     if key == 'escape' then
         love.event.quit()
+    elseif key == 'return' or key == 'space' then
+        if gameState =='start' then
+            gameState = 'play'
+        else
+            gameState = 'start'
+
+             --variable for ball position initilize to initial value
+            ball:reset()
+        end
     end
 end
 
@@ -61,21 +89,28 @@ end
 --function for update which runs every frame and updates the screen 
 function love.update(dt)
     if love.keyboard.isDown("a") then
-        player1Y = math.max(0,player1Y - PADDLE_SPEED * dt)
+        player1.dy = -PADDLE_SPEED
+    elseif love.keyboard.isDown(";") then
+        player1.dy = PADDLE_SPEED
+    else
+        player1.dy =0
     end
 
-    if love.keyboard.isDown(";") then
-        player1Y = math.min(VIRTUAL_HEIGHT-50 ,player1Y + PADDLE_SPEED * dt)
-    end
-    
     if love.keyboard.isDown("-") then
-        player2Y = math.max(0,player2Y - PADDLE_SPEED * dt)
+        player2.dy = -PADDLE_SPEED
+    elseif love.keyboard.isDown("z") then
+        player2.dy = PADDLE_SPEED
+    else
+        player2.dy = 0
     end
 
-    if love.keyboard.isDown("z") then
-        player2Y = math.min(VIRTUAL_HEIGHT-50, player2Y + PADDLE_SPEED * dt)
+    if gameState =='play' then
+        ball:update(dt)
     end
-    
+
+    player1:update(dt)
+    player2:update(dt)
+
 end
 
 
@@ -94,14 +129,12 @@ function love.draw()
     love.graphics.setFont(oldFont)
     love.graphics.printf('Hello Pong!',0, 20,VIRTUAL_WIDTH,'center')
 
-    -- for right paddle parameters of rectangle function are (type string(fill or line),starnig y coordinate, starting x coordinate,width, height)
-    love.graphics.rectangle('fill',10,player1Y,5,50)
-
+    player1:render()
+    player2:render()
+    
     --for ball
-    love.graphics.circle('fill',VIRTUAL_WIDTH/2-3,VIRTUAL_HEIGHT/2-3,8)
-    --for left paddle
+    ball:render()
 
-    love.graphics.rectangle('fill',VIRTUAL_WIDTH -15,player2Y,5,50)
     
     -- for score display
     love.graphics.setFont(scoreFont)
