@@ -49,20 +49,25 @@ function love.load()
 
     --the ramdom function takes a number and after manipulating it generates a sudo random number 
     --if seed remains same than a ramdom output is not really random and to avoid this we set seed to os.time() which is new number every time
-
     math.randomseed(os.time())
     
+    --importing sounds and storing them in a table
+    sounds = {
+        ['paddle'] = love.audio.newSource('sounds/wall.wav','static'),
+        ['wall'] = love.audio.newSource("sounds/paddle.wav",'static'),
+        ['score'] = love.audio.newSource('sounds/jump.wav','static')
+    }
     
     -- replacing love.window.setMode() with the following underwritten function from push library for 
     -- keeping the external screen size  same but lower internal resulotion for old like effect
     push:setupScreen(VIRTUAL_WIDTH,VIRTUAL_HEIGHT,WINDOW_WIDTH,WINDOW_HEIGHT,{
         fullscreen = false,
-        resizable = false,
+        resizable = true,
         vsync = true
     })
     --paddle object for both players
-    player1 = Paddle(10,30,5,50)
-    player2 = Paddle(VIRTUAL_WIDTH -15,VIRTUAL_HEIGHT-80,5,50)
+    player1 = Paddle(10,30,5,420)
+    player2 = Paddle(VIRTUAL_WIDTH -15,VIRTUAL_HEIGHT-80,5,420)
 
     --ball object decleration
     ball = Ball(VIRTUAL_WIDTH/2-3,VIRTUAL_HEIGHT/2-3,8)
@@ -74,6 +79,11 @@ function love.load()
     gameState = 'start'
 
 
+end
+
+function love.resize(w,h)
+    push:resize(w,h)
+    
 end
 
 --function for terminating the game on press of escape button
@@ -127,6 +137,8 @@ function love.update(dt)
             else 
                 ball.dy = math.random(50,100)
             end
+
+            sounds['paddle']:play()
         end
         if ball:collides(player2) then
             ball.dx = -ball.dx *1.1
@@ -136,24 +148,29 @@ function love.update(dt)
             else 
                 ball.dy = math.random(50,100)
             end
+
+            sounds['paddle']:play()
         end
 
         --for inverting the ball velocity when it collides from the top edge of screen
         if ball.y <=0 then
             ball.y = 0
             ball.dy = -ball.dy
+            sounds['wall']:play()
         end
 
         --for inverting the ball velocity when it collides from bottom edge
         if ball.y >= VIRTUAL_HEIGHT then
             ball.y = VIRTUAL_HEIGHT-16
             ball.dy = -ball.dy
+            sounds['wall']:play()
         end
         if ball.x < 0 then
             servingPlayer = 1
             player2score = player2score+1
+            sounds['score']:play()
             
-            if player2score == 2 then
+            if player2score == 10 then
                 WinnigPlayer = 2
                 gameState = 'done'
             else
@@ -165,7 +182,9 @@ function love.update(dt)
         if ball.x > VIRTUAL_WIDTH then
             servingPlayer = 2
             player1score = player1score +1
-            if player1score == 2 then
+            sounds['score']:play()
+            
+            if player1score == 10 then
                 WinnigPlayer = 1
                 gameState = 'done'
             else
