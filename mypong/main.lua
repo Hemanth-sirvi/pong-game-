@@ -1,5 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
+
 --[[
     update 4 - "implimenting object orineted programming"
     using class library to implement classes and object
@@ -20,7 +21,7 @@ require 'Paddle'
 require 'Ball'
 
 -- setting an height and width values for the screen for using it in all code
-WINDOW_WIDTH = 1080
+WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 
 -- virtual height and width values for the game 
@@ -39,11 +40,19 @@ function love.load()
     -- a new font which is more retro looking
     oldFont = love.graphics.newFont('font.ttf',20)
     scoreFont = love.graphics.newFont('font.ttf',40)
-
+    winFont = love.graphics.newFont('font.ttf',30)
     --this is just a filter so that text is still readable
     love.graphics.setDefaultFilter('nearest','nearest')
    
+    --title for the game window
+    love.window.setTitle('Pong')
+
+    --the ramdom function takes a number and after manipulating it generates a sudo random number 
+    --if seed remains same than a ramdom output is not really random and to avoid this we set seed to os.time() which is new number every time
+
     math.randomseed(os.time())
+    
+    
     -- replacing love.window.setMode() with the following underwritten function from push library for 
     -- keeping the external screen size  same but lower internal resulotion for old like effect
     push:setupScreen(VIRTUAL_WIDTH,VIRTUAL_HEIGHT,WINDOW_WIDTH,WINDOW_HEIGHT,{
@@ -74,20 +83,100 @@ function love.keypressed(key)
         love.event.quit()
     elseif key == 'return' or key == 'space' then
         if gameState =='start' then
+            gameState = 'serve'
+        elseif gameState == 'serve' then
             gameState = 'play'
-        else
-            gameState = 'start'
-
              --variable for ball position initilize to initial value
+        elseif gameState == 'done' then
+
             ball:reset()
+            if WinnigPlayer == 1 then
+                servingPlayer = 2
+            else 
+                servingPlayer = 1
+            end
+
+            player1score = 0
+            player2score = 0 
+            gameState = 'serve'
         end
     end
 end
 
 
 
+
 --function for update which runs every frame and updates the screen 
 function love.update(dt)
+
+    if gameState == 'serve' then
+        ball.dy = math.random(-200,200)
+
+        if servingPlayer == 1 then
+            ball.dx = math.random(200,250)
+        else
+            ball.dx = -math.random(200,250)
+        end
+    elseif gameState == 'play' then
+        -- collision is detected with the paddle than invert the x velocity and increase speed by 5%
+        if ball:collides(player1) then
+            ball.dx = -ball.dx * 1.1
+            ball.x = player1.x +5
+            if ball.dy < 0 then
+                ball.dy = -math.random(50,100)
+            else 
+                ball.dy = math.random(50,100)
+            end
+        end
+        if ball:collides(player2) then
+            ball.dx = -ball.dx *1.1
+            ball.x = player2.x - 14
+            if ball.dy < 0 then
+                ball.dy = -math.random(50,100)
+            else 
+                ball.dy = math.random(50,100)
+            end
+        end
+
+        --for inverting the ball velocity when it collides from the top edge of screen
+        if ball.y <=0 then
+            ball.y = 0
+            ball.dy = -ball.dy
+        end
+
+        --for inverting the ball velocity when it collides from bottom edge
+        if ball.y >= VIRTUAL_HEIGHT then
+            ball.y = VIRTUAL_HEIGHT-16
+            ball.dy = -ball.dy
+        end
+        if ball.x < 0 then
+            servingPlayer = 1
+            player2score = player2score+1
+            
+            if player2score == 2 then
+                WinnigPlayer = 2
+                gameState = 'done'
+            else
+                gameState = 'serve'
+                ball:reset()
+            end
+        end
+    
+        if ball.x > VIRTUAL_WIDTH then
+            servingPlayer = 2
+            player1score = player1score +1
+            if player1score == 2 then
+                WinnigPlayer = 1
+                gameState = 'done'
+            else
+                gameState = 'serve'
+                ball:reset()
+            end
+        end
+    end
+
+    --for controling the paddles 
+    --for player 1 the keys are a and ; since i am using dvorak keyboard layout
     if love.keyboard.isDown("a") then
         player1.dy = -PADDLE_SPEED
     elseif love.keyboard.isDown(";") then
@@ -96,6 +185,7 @@ function love.update(dt)
         player1.dy =0
     end
 
+    --and for payer2 the keys are - and z
     if love.keyboard.isDown("-") then
         player2.dy = -PADDLE_SPEED
     elseif love.keyboard.isDown("z") then
@@ -107,6 +197,7 @@ function love.update(dt)
     if gameState =='play' then
         ball:update(dt)
     end
+
 
     player1:update(dt)
     player2:update(dt)
@@ -123,12 +214,9 @@ function love.draw()
     push:apply('start')
 
     -- for adding a grey background
-    love.graphics.clear(40/255, 45/255, 52/255, 255/255)
+    love.graphics.clear(42/255, 45/255, 52/255, 255/255)
     
     -- this function is a text printing function which takes the text , starting x , starting y, ending x and allignment 
-    love.graphics.setFont(oldFont)
-    love.graphics.printf('Hello Pong!',0, 20,VIRTUAL_WIDTH,'center')
-
     player1:render()
     player2:render()
     
@@ -141,10 +229,32 @@ function love.draw()
     love.graphics.printf(player1score,0,20,VIRTUAL_WIDTH/2,'center')
     love.graphics.printf(player2score,VIRTUAL_WIDTH/2,20,VIRTUAL_WIDTH/2,'center')
     
+    displayFPS()
 
+    if gameState == 'start' then
+        love.graphics.setFont(oldFont)
+        love.graphics.printf('Welcome to Pong!', 0, 10, VIRTUAL_WIDTH, 'center')
+        love.graphics.printf('Press Enter to begin!', 0, 40, VIRTUAL_WIDTH, 'center')
+    elseif gameState == 'serve' then
+        love.graphics.setFont(oldFont)
+        love.graphics.printf('Player ' .. tostring(servingPlayer) .. "'s serve!", 
+            0, 10, VIRTUAL_WIDTH, 'center')
+        love.graphics.printf('Press Enter to serve!', 0, 40, VIRTUAL_WIDTH, 'center')
+    elseif gameState == 'done' then
+        love.graphics.setFont(winFont)
+        love.graphics.printf('player'..tostring(WinnigPlayer)..' won',0, 100, VIRTUAL_WIDTH,'center')
+        love.graphics.printf('press Enter or space to restart!',0,140,VIRTUAL_WIDTH,'center')
+    elseif gameState == 'play' then
+    end
 
     --end of rendering
     push:apply('end')
 
 end
 
+function displayFPS()
+    love.graphics.setFont(oldFont)
+    love.graphics.setNewFont(10)
+    love.graphics.setColor(0,1.0,0,1.0)
+    love.graphics.print('FPS: '..tostring(love.timer.getFPS()))
+end
